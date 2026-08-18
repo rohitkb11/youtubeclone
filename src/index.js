@@ -6,13 +6,21 @@ import { app } from "./app.js";
 
 dotenv.config()
 
-connectDB()
-
-
-
+connectDB().then(()=>(
 app.listen(process.env.PORT, () => {
     console.log(`this is working at port http://localhost:${process.env.PORT}`);
-})
+}))
+).catch(
+   (err)=>{
+    console.log("server error",err);
+    
+    
+   }
+    
+)
+
+
+
 
 // import express from 'express'
 // import { DB_NAME } from "./constants";
