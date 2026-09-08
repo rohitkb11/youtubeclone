@@ -5,10 +5,9 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import ApiResponse from '../utils/ApiResponse.js'
 const generateAccessandRefreshtoken = async (userId)=>{
     try {
-        const user = await User.findById(userId)
-       const accessToken= user.generateAccessToken() 
-       const refreshToken =  user.generateRefreshToken()
-
+        const user = await User.findById(userId)        
+       const accessToken=  await user.generateAccessToken() 
+       const refreshToken =  await  user.generateRefreshToken()
        user.refreshToken = refreshToken
        await user.save({validateBeforeSave: false})
        return { accessToken , refreshToken}
@@ -40,15 +39,14 @@ if(
 
 // checking if user exists
 const existingUser = await User.findOne({
-    $or : [{userName},{fullName}]
+    $or : [{userName},{email}]
 })
 if(existingUser){
     throw new ApiError(409, "username or email already exists")
 }
-console.log(req.files);
 
-const avatarLocalPath =  req.files?.avatar[0].path ;
-const userImageLocalPath = req.files?.userImage[0]?.path;
+const avatarLocalPath =  req.files?.avatar[0].path || "";
+const userImageLocalPath = req.files?.userImage[0]?.path || "";
 // if(!avatarLocalPath){
 // throw new ApiError(400,"avatar is needed")
 // }
@@ -91,13 +89,16 @@ const loginUser = asyncHandler(async (req,res)=>{
     // user ko refresh token do
 
     const {username , email , password} = req.body;
-    if(!username || !email){
-        throw new ApiError(400 , "username or password is required")
+        
+    if(!username && !email){
+        throw new ApiError(400 , "username or email is required")
     }
 
   const user = await  User.findOne({
-        $or : [{username}, {email}]
+         $or: [{username},{email}]
     })
+    console.log(user);
+    
 
     if(!user){
         throw new ApiError(404 , "user not found")
