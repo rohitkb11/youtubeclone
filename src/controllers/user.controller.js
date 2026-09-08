@@ -17,7 +17,7 @@ const generateAccessandRefreshtoken = async (userId)=>{
 
 }}
 // A controller is a function or component that handles incoming requests and controls the flow of a backend operation, usually by calling the appropriate service and returning a response.
-const registerUser = asyncHandler(async (req,res,next )=>{
+const registerUser = asyncHandler(async (req,res )=>{
 // get user details from frontend
 // validation - not empty
 // check if user already exists : check with username and email
@@ -81,7 +81,7 @@ return res.status(201).json(
 
 }) 
 
-const loginUser = asyncHandler(async (req,res,next)=>{
+const loginUser = asyncHandler(async (req,res)=>{
     // extract body from req
     // username or email validation
     // find the user 
@@ -130,7 +130,36 @@ const loginUser = asyncHandler(async (req,res,next)=>{
    
      
 })
+
+const logoutUser = asyncHandler(async(req,res)=>{
+   const loggedOut =  await User.findByIdAndUpdate(req.user._id,
+        {
+            $set:{
+                refreshToken : undefined,
+
+            },
+            
+        },
+        {
+            new: true,
+        }
+    )
+     const options={
+    httpOnly : true,
+    secure : true, 
+   }
+   return res
+   .status(200)
+   .clearCookie("accessToken", options)
+   .clearCookie("refreshToken", options)
+   .json(
+    new ApiResponse(200, {},"user logged out successfully")
+   )
+
+
+})
 export {
     registerUser,
-    loginUser
+    loginUser,
+    logoutUser
 }
