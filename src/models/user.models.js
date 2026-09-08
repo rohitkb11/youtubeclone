@@ -24,7 +24,7 @@ const userSchema = new Schema({
     },
      avatar :{
         type : String, //cloudinary
-        required: true,
+    
     },
      coverImage:{
         type : String, //cloudinary
@@ -43,10 +43,10 @@ const userSchema = new Schema({
      }
 },{timestamps: true})
 // Arrow function not used below because of the arrow function don't have context of this i.e. which context they talking about.
-userSchema.pre('save', async function (next) {
-    if(!this.isModified("password")) return next();
+userSchema.pre('save', async function () {
+    if(!this.isModified("password")) return ;
     this.password = await bcrypt.hash(this.password , 10)
-    next()
+    
 })
 userSchema.methods.isPasswordCorrect = async function (password){
    return await bcrypt.compare(password,this.password)

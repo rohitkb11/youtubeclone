@@ -3,6 +3,19 @@ import ApiError from '../utils/ApiError.js'
 import {User} from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import ApiResponse from '../utils/ApiResponse.js'
+const generateAccessandRefreshtoken = async (userId)=>{
+    try {
+        const user = await User.findById(userId)
+       const accessToken= user.generateAccessToken() 
+       const refreshToken =  user.generateRefreshToken()
+
+       user.refreshToken = refreshToken
+       await user.save({validateBeforeSave: false})
+       return { accessToken , refreshToken}
+    } catch (error) {
+        throw new ApiError(500, "something went wrong")
+
+}}
 // A controller is a function or component that handles incoming requests and controls the flow of a backend operation, usually by calling the appropriate service and returning a response.
 const registerUser = asyncHandler(async (req,res,next )=>{
 // get user details from frontend
@@ -26,30 +39,31 @@ if(
 }
 
 // checking if user exists
-const existingUser = User.findOne({
+const existingUser = await User.findOne({
     $or : [{userName},{fullName}]
 })
 if(existingUser){
     throw new ApiError(409, "username or email already exists")
 }
+console.log(req.files);
 
-const avatarLocalPath = req.files?.avatar[0]?.path
-const userImageLocalPath = req.files?.userImage[0]?.path
-if(!avatarLocalPath){
-throw new ApiError(400,"avatar is needed")
-}
+const avatarLocalPath =  req.files?.avatar[0].path ;
+const userImageLocalPath = req.files?.userImage[0]?.path;
+// if(!avatarLocalPath){
+// throw new ApiError(400,"avatar is needed")
+// }
 
 const avatar =  await  uploadOnCloudinary(avatarLocalPath)
 const userImage = await uploadOnCloudinary(userImageLocalPath)
-if(!avatar){
-    throw new ApiError(400,"avatar is not uploaded")
-}
+// if(!avatar){
+//     throw new ApiError(400,"avatar is not uploaded")
+// }
 
 const user = await User.create({
     userName,
     email,
     fullName,
-    avatar :  avatar.url,
+    avatar :  avatar?.url|| "",
     userImage: userImage?.url || "",
     password, 
 })
@@ -66,4 +80,57 @@ return res.status(201).json(
 )
 
 }) 
-export {registerUser}
+
+const loginUser = asyncHandler(async (req,res,next)=>{
+    // extract body from req
+    // username or email validation
+    // find the user 
+    // if not reject the request
+    // password check
+    // access token se validate kro
+    // user ko refresh token do
+
+    const {username , email , password} = req.body;
+    if(!username || !email){
+        throw new ApiError(400 , "username or password is required")
+    }
+
+  const user = await  User.findOne({
+        $or : [{username}, {email}]
+    })
+
+    if(!user){
+        throw new ApiError(404 , "user not found")
+    }
+
+    const isPasswordValid  = await user.isPasswordCorrect(password)
+    if(!isPasswordValid){
+        throw new ApiError(401,  " invalid user ")
+    }
+   const {accessToken , refreshToken}= await generateAccessandRefreshtoken(user._id)
+   const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+   const options={
+    httpOnly : true,
+    secure : true, 
+   }
+   return res.status(200)
+   .cookie("accessToken", accessToken, options)
+   .cookie("refreshToken", refreshToken, options)
+   .json(
+    new ApiResponse(
+        200,
+        {
+            user: loggedInUser, accessToken, refreshToken
+        },
+        "user Logged in successfully"
+    )
+   )
+   
+
+   
+     
+})
+export {
+    registerUser,
+    loginUser
+}
